@@ -1,0 +1,9 @@
+cmd_result.txt
+exec.c
+file1.txt
+file2.txt
+libft
+main.c
+Makefile
+pipex
+/usr/bin/ls
