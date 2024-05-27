@@ -6,7 +6,7 @@
 /*   By: jedusser <jedusser@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/27 13:16:15 by jedusser          #+#    #+#             */
-/*   Updated: 2024/05/27 16:00:30 by jedusser         ###   ########.fr       */
+/*   Updated: 2024/05/27 16:39:23 by jedusser         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -112,10 +112,14 @@ int main(int argc, char **argv, char **envp)
 	char	*directory;
 	//int filedes[2];
 	pid_t	pid;
-	int file = open ("cmd_result.txt", O_WRONLY | O_CREAT, 0777);
-	int file2 = dup2(file, STDOUT_FILENO);
-	//close(file);
-	//printf("hello");
+	int		file; 
+	int		file2;
+	file = open ("cmd_result.txt", O_WRONLY | O_CREAT, 0777);
+	if(file >= 0)
+	{
+		file2 = dup2(file, STDOUT_FILENO);
+		close(file);
+	}
 	directory = check_all_dirs(envp, argv[1]);
 	if (!directory)
 		return 1;
