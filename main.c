@@ -6,7 +6,7 @@
 /*   By: jedusser <jedusser@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/27 13:16:15 by jedusser          #+#    #+#             */
-/*   Updated: 2024/05/27 16:39:23 by jedusser         ###   ########.fr       */
+/*   Updated: 2024/05/28 10:39:50 by jedusser         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -67,13 +67,18 @@ int	exec_found(const char *dirname, char *exec_searched)
 // this function checks if exec is found in all concerned directories 
 // and returns the directory where it has been found.
 
-char	*check_all_dirs(char **envp, char *exec_searched)
+char	*check_all_dirs(char *exec_searched)
 {
-	const char	*paths = getenv("PATH");
+	const char	*paths;
 	char		**path_list;
+	char		*result;
 	int			i;
 
+	paths = getenv("PATH");
+	if(!paths)
+		return (NULL);
 	path_list = ft_split(paths, ':');
+	result = NULL;
 	if (!path_list)
 		return (NULL);
 	i = 0;
@@ -81,77 +86,82 @@ char	*check_all_dirs(char **envp, char *exec_searched)
 	{
 		if (exec_found(path_list[i], exec_searched) == 1)
 		{
-			return (path_list[i]);
-			//printf("%s\n", path_list[i]);
+			result = ft_strdup(path_list[i]);
 			break ;
 		}
 		i++;
 	}
 	free_array(path_list);
-	return (NULL);
+	return (result);
 }
 
-char	*ft_concat_path(char **envp, char *prompt)
+char	*ft_concat_path(char *directory, char *prompt)
 {
-	char	*exec_path;
-	
-	exec_path = ft_strcat(check_all_dirs(envp, prompt), "/"); 
-	exec_path = ft_strcat(exec_path, prompt);
-	printf("%s\n", exec_path);
+	size_t	total_length;
+	directory = check_all_dirs(prompt);
+	if (!directory)
+		return (NULL);
+
+	total_length = strlen(directory) + strlen(prompt) + 2; 
+	char *exec_path = malloc(total_length);
+	if (!exec_path)
+	{
+		free(directory);
+		return (NULL);
+	}
+	ft_strcpy(exec_path, directory); 
+	ft_strcat(exec_path, "/");      
+	ft_strcat(exec_path, prompt);
+
+	//printf("%s\n", exec_path);
+
+	free(directory);
 	return (exec_path);
 }
 
+void	parent(char *cmd1)
+{
+	int file;
+	file = open ("cmd_result.txt", O_WRONLY | O_CREAT | O_TRUNC, 0777);
+	printf("hello parent func");
+	if (file >= 0)
+	{
+		dup2(file, STDOUT_FILENO);
+		close(file);
+	}
+}
+
+int	my_exec(char *cmd, char **argv, char **envp)
+{
+	char	*directory;
+	char	*cmd_path;
+	
+	directory = check_all_dirs(cmd);
+	printf("%s", cmd);
+	if (!directory)
+		return (1);
+	cmd_path = ft_concat_path(directory, cmd);
+	if(!cmd_path)
+		return (1);
+	free(directory);
+	execve(cmd_path, argv, envp);
+	free (cmd_path);
+	return (0);
+}
 
 int main(int argc, char **argv, char **envp)
 {
-	if (argc < 2)
-		return 1;
 	
-	char	*cmd1_path;
-	char	*cmd2_path;
-	char	*directory;
-	//int filedes[2];
+	
+	char	*cmd1;
+	char	*cmd2;
 	pid_t	pid;
-	int		file; 
-	int		file2;
-	file = open ("cmd_result.txt", O_WRONLY | O_CREAT, 0777);
-	if(file >= 0)
-	{
-		file2 = dup2(file, STDOUT_FILENO);
-		close(file);
-	}
-	directory = check_all_dirs(envp, argv[1]);
-	if (!directory)
-		return 1;
-		
-	cmd1_path = ft_concat_path(&directory, argv[1]);
-	if (!cmd1_path)
-		return 1;
-		
-	free(directory);
+	int		filedes[2];
+	cmd1 = argv[1];
+	//cmd2 = argv[2];
+	parent(cmd1);
+	my_exec(cmd1, &argv[1], envp);
 
-	pid = fork();
-	if(pid == 0)
-	{
-		printf("Executing: %s\n", cmd1_path);
-		execve(cmd1_path, &argv[1], envp);
-		free(cmd1_path);	
-	}
-	if(pid > 0)
-		waitpid(pid, NULL, 0);
-	
-	// if(!argv[2])
-	// 	return (1);
-	// else if(argv[2][0] != '-')
-	// {
-	// 	directory = check_all_dirs(envp, argv[2]);
-	// 	cmd2_path = ft_concat_path(&directory, argv[2]);
-	// }
-	// else
-	// {
-	// 	directory = check_all_dirs(envp, argv[3]);
-	// 	cmd2_path = ft_concat_path(&directory, argv[3]);
-	// }
 
 	return 0;
 }
