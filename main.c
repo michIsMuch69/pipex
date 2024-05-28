@@ -6,7 +6,7 @@
 /*   By: jedusser <jedusser@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/27 13:16:15 by jedusser          #+#    #+#             */
-/*   Updated: 2024/05/28 10:39:50 by jedusser         ###   ########.fr       */
+/*   Updated: 2024/05/28 13:36:52 by jedusser         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -119,49 +119,78 @@ char	*ft_concat_path(char *directory, char *prompt)
 	return (exec_path);
 }
 
-void	parent(char *cmd1)
+
+void child(int fd[2], char *cmd2, char **envp)
 {
-	int file;
-	file = open ("cmd_result.txt", O_WRONLY | O_CREAT | O_TRUNC, 0777);
-	printf("hello parent func");
-	if (file >= 0)
+	// int file2;
+	char *args[3];
+	args[0] = "/bin/ls";
+	args[1] = "-a";
+	args[2] = NULL;
+	// file2 = read(fd, O_WRONLY | O_CREAT | O_TRUNC, 0777);
+	printf("hello child func\n");
+	if (fd[1] >= 0)
 	{
-		dup2(file, STDOUT_FILENO);
-		close(file);
+		dup2(fd[1], STDOUT_FILENO);
+		close(fd[1]);
 	}
+	close(fd[0]);
+	execve(args[0], args, envp);
+	exit(2);
 }
 
-int	my_exec(char *cmd, char **argv, char **envp)
+void	parent(pid_t pid, int fd[2], char *cmd1, char **envp)
 {
-	char	*directory;
-	char	*cmd_path;
+	char	buffer[200];
+	char *args[2];
+	args[0] = "/usr/bin/rev";
+	args[1] = NULL;
 	
-	directory = check_all_dirs(cmd);
-	printf("%s", cmd);
-	if (!directory)
-		return (1);
-	cmd_path = ft_concat_path(directory, cmd);
-	if(!cmd_path)
-		return (1);
-	free(directory);
-	execve(cmd_path, argv, envp);
-	free (cmd_path);
-	return (0);
+	printf("hello parent func\n");
+	if (fd[0] >= 0)
+	{
+		dup2(fd[0], STDIN_FILENO);
+		close(fd[0]);
+	}
+	close(fd[1]);
+	execve(args[0], args, envp);
+	exit(2);
 }
 
-int main(int argc, char **argv, char **envp)
+// int	my_exec(char *cmd, char **argv, char **envp)
+// {
+// 	char	*directory;
+// 	char	*cmd_path;
+	
+// 	directory = check_all_dirs(cmd);
+// 	printf("%s\n", cmd);
+// 	if (!directory)
+// 		return (1);
+// 	cmd_path = ft_concat_path(directory, cmd);
+// 	if(!cmd_path)
+// 		return (1);
+// 	free(directory);
+// 	execve(cmd_path, argv, envp);
+// 	free (cmd_path);
+// 	return (0);
+// }
+
+int	main(int argc, char **argv, char **envp)
 {
-	
-	
 	char	*cmd1;
 	char	*cmd2;
 	pid_t	pid;
 	int		filedes[2];
+	
 	cmd1 = argv[1];
-	//cmd2 = argv[2];
-	parent(cmd1);
-	my_exec(cmd1, &argv[1], envp);
-
-
+	cmd2 = argv[2];
+	pipe(filedes);
+	pid = fork();
+	if(pid == 0)
+		child(filedes, cmd2, envp);
+	parent(pid, filedes,cmd1, envp);
+	waitpid(pid, NULL, 0);
+	while (waitpid(-1, NULL, 0) != -1)
+		;
 	return 0;
 }
