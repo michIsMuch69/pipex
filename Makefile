@@ -6,7 +6,7 @@
 #    By: jedusser <jedusser@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/05/27 12:03:52 by jedusser          #+#    #+#              #
-#    Updated: 2024/05/27 16:01:25 by jedusser         ###   ########.fr        #
+#    Updated: 2024/05/30 08:53:49 by jedusser         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -24,7 +24,7 @@ LIBFT_HDR_PATH = libft/hdr/
 
 LIBFT = $(LIBFT_PATH)libft.a
 
-FLAGS = -g3 -I$(LIBFT_HDR_PATH) -Iheader #-Wall -Wextra -Werror
+FLAGS = -g3 -g -I$(LIBFT_HDR_PATH) -Iheader #-Wall -Wextra -Werror
 LDFLAGS = -L$(LIBFT_PATH) -lft -lreadline
 
 OBJS = $(SRCS:%.c=$(OBJS_PATH)/%.o)
