@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   main.c                                             :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: jedusser <jedusser@student.42.fr>          +#+  +:+       +#+        */
+/*   By: jean-micheldusserre <jean-micheldusserr    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/30 08:09:43 by jedusser          #+#    #+#             */
-/*   Updated: 2024/05/30 16:16:39 by jedusser         ###   ########.fr       */
+/*   Updated: 2024/05/30 17:04:59 by jean-michel      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,10 +18,8 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <dirent.h>
-#include <fcntl.h>
 
-// Custom exec
-
+// Custom exec functions
 int	ft_strcmp(char *s1, char *s2)
 {
 	int	i;
@@ -51,7 +49,7 @@ int	exec_found(const char *dirname, char *exec_searched)
 	if (!dir)
 		return (-1);
 	entity = readdir(dir);
-	while (entity!= NULL)
+	while (entity != NULL)
 	{
 		if (ft_strcmp(entity->d_name, exec_searched) == 0)
 		{
@@ -88,7 +86,6 @@ char	*check_all_dirs(char *exec_searched)
 		}
 		i++;
 	}
-	//pas trouve ?? cherche dans builtin ?? oui > exec builtin , non > pas trouve > command not found;
 	free_array(path_list);
 	return (result);
 }
@@ -96,7 +93,7 @@ char	*check_all_dirs(char *exec_searched)
 char	*ft_concat_path(char *directory, char *prompt)
 {
 	size_t	total_length;
-	char *exec_path;
+	char	*exec_path;
 
 	total_length = strlen(directory) + strlen(prompt) + 2;
 	exec_path = malloc(total_length);
@@ -116,36 +113,34 @@ void	print_cmds(char **cmds)
 {
 	int i;
 	i = 0;
-	while(cmds[i])
+	while (cmds[i])
 	{
-		printf("commande %d = [%s]\n",i + 1, cmds[i]);
+		printf("commande %d = [%s]\n", i + 1, cmds[i]);
 		i++;
 	}
 }
-int	my_exec(int i, char **cmds, char **argv, char **envp)
+
+int	my_exec(char *cmd, char **envp)
 {
+	char	**args;
 	char	*directory;
 	char	*cmd_path;
 
-	directory = check_all_dirs(cmds[i]);
+	args = ft_split(cmd, ' ');
+	if (!args)
+		return (1);
+	directory = check_all_dirs(args[0]);
 	if (!directory)
-		return (1);
-	cmd_path = ft_concat_path(directory, cmds[i]);
-	printf("path to exec : %s\n", cmd_path);
+		return (free_array(args), 1);
+	cmd_path = ft_concat_path(directory, args[0]);
 	if (!cmd_path)
-		return (free(directory), 1);
-	print_cmds(cmds);
-	if(execve(cmd_path, argv, envp) == -1)
-	{
-		perror("execve failed");
-		free(cmd_path);
-		return (1);
-	}
+		return (free(directory), free_array(args), 1);
+	execve(cmd_path, args, envp);
+	perror("execve failed");
 	free(cmd_path);
-	return (0);
+	free_array(args);
+	return (1);
 }
-
-
 
 char	**distribute_cmds(int argc, char **argv)
 {
@@ -155,16 +150,14 @@ char	**distribute_cmds(int argc, char **argv)
 
 	j = 0;
 	i = 1;
-
 	cmds = malloc((argc - 1) * sizeof(char *));
 	if (!cmds)
 		return (NULL);
-	while(i < argc && argv[i] != NULL)
+	while (i < argc && argv[i] != NULL)
 	{
-		cmds[j] = malloc((ft_strlen(argv[i]) + 1) * sizeof(char));
-		if(!cmds[j])
-			return (NULL);
 		cmds[j] = strdup(argv[i]);
+		if (!cmds[j])
+			return (free_array(cmds), NULL);
 		j++;
 		i++;
 	}
@@ -172,52 +165,73 @@ char	**distribute_cmds(int argc, char **argv)
 	return (cmds);
 }
 
-//FOR TEST
 int	main(int argc, char **argv, char **envp)
 {
 	int		cmd_count;
-	cmd_count = argc - 1;
 	int		fds[2];
-	pid_t	pids[cmd_count];
+	pid_t	pid;
 	int		i;
 	char	**cmds;
-	
-	cmds = distribute_cmds(argc, argv);
-	//test :
-	print_cmds(cmds);
-	
-	i = 0;
-	pipe(fds);
-	while (i < cmd_count) 
+	int		prev_fd;
+
+	if (argc < 2)
 	{
-		// pipe following fork
-		pids[i] = fork();
-		printf("%d\n", pids[i]);
-		if (pids[i] == -1) 
+		fprintf(stderr, "Usage: %s cmd1 cmd2 ... cmdN\n", argv[0]);
+		return (1);
+	}
+	cmds = distribute_cmds(argc, argv);
+	if (!cmds)
+		return (1);
+
+	cmd_count = argc - 1;
+	i = 0;
+	prev_fd = 0;
+
+	while (i < cmd_count)
+	{
+		if (pipe(fds) == -1)
+		{
+			perror("pipe failed");
+			return (free_array(cmds), 1);
+		}
+		pid = fork();
+		if (pid == -1)
 		{
 			perror("fork failed");
-			exit(EXIT_FAILURE);
-		} 
-		else if (pids[i] == 0) 
-		{
-			close(fds[0]);
-			dup2(fds[1], STDOUT_FILENO);
-			my_exec(i, cmds, argv, envp);
-			exit(0); 
+			return (free_array(cmds), 1);
 		}
-		else if (pids[i] > 0)
+		else if (pid == 0)
 		{
-			close(fds[1]);
-			dup2(fds[0], STDIN_FILENO);
-			my_exec(i, cmds, argv, envp);
+			if (i > 0)
+			{
+				dup2(prev_fd, STDIN_FILENO);
+				close(prev_fd);
+			}
+			if (i < cmd_count - 1)
+			{
+				dup2(fds[1], STDOUT_FILENO);
+				close(fds[1]);
+			}
+			close(fds[0]);
+			my_exec(cmds[i], envp);
+			exit(EXIT_FAILURE);
+		}
+		else
+		{
+			if (i > 0)
+				close(prev_fd);
+			if (i < cmd_count - 1)
+				close(fds[1]);
+			prev_fd = fds[0];
 		}
 		i++;
 	}
 	i = 0;
-	while (i < cmd_count) 
+	while (i < cmd_count)
 	{
-		waitpid(pids[i], NULL, 0);
+		waitpid(-1, NULL, 0);
 		i++;
 	}
 	free_array(cmds);
+	return (0);
 }
