@@ -6,21 +6,21 @@
 /*   By: jedusser <jedusser@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/30 08:09:43 by jedusser          #+#    #+#             */
-/*   Updated: 2024/05/30 10:53:51 by jedusser         ###   ########.fr       */
+/*   Updated: 2024/05/30 16:16:39 by jedusser         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "libft.h"
 #include <stdio.h>
-#include <readline/readline.h> 
-#include <readline/history.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <dirent.h>
 #include <fcntl.h>
 
-
-// ###### CUSTOM_EXEC ######
+// Custom exec
 
 int	ft_strcmp(char *s1, char *s2)
 {
@@ -41,7 +41,6 @@ void	free_array(char **array)
 		free(array[i++]);
 	free(array);
 }
-//this function checks if exec is found within a directory.
 
 int	exec_found(const char *dirname, char *exec_searched)
 {
@@ -50,12 +49,9 @@ int	exec_found(const char *dirname, char *exec_searched)
 
 	dir = opendir(dirname);
 	if (!dir)
-	{
-		//perror("Failed to open directory");
 		return (-1);
-	}
 	entity = readdir(dir);
-	while (entity != NULL)
+	while (entity!= NULL)
 	{
 		if (ft_strcmp(entity->d_name, exec_searched) == 0)
 		{
@@ -66,9 +62,7 @@ int	exec_found(const char *dirname, char *exec_searched)
 	}
 	closedir(dir);
 	return (0);
-} 
-//this function checks if exec is found in all concerned directories 
-//and returns the directory where it has been found.
+}
 
 char	*check_all_dirs(char *exec_searched)
 {
@@ -78,7 +72,7 @@ char	*check_all_dirs(char *exec_searched)
 	int			i;
 
 	paths = getenv("PATH");
-	if(!paths)
+	if (!paths)
 		return (NULL);
 	path_list = ft_split(paths, ':');
 	result = NULL;
@@ -94,6 +88,7 @@ char	*check_all_dirs(char *exec_searched)
 		}
 		i++;
 	}
+	//pas trouve ?? cherche dans builtin ?? oui > exec builtin , non > pas trouve > command not found;
 	free_array(path_list);
 	return (result);
 }
@@ -101,84 +96,57 @@ char	*check_all_dirs(char *exec_searched)
 char	*ft_concat_path(char *directory, char *prompt)
 {
 	size_t	total_length;
-	directory = check_all_dirs(prompt);
-	if (!directory)
-		return (NULL);
+	char *exec_path;
 
-	total_length = strlen(directory) + strlen(prompt) + 2; 
-	char *exec_path = malloc(total_length);
+	total_length = strlen(directory) + strlen(prompt) + 2;
+	exec_path = malloc(total_length);
 	if (!exec_path)
 	{
 		free(directory);
 		return (NULL);
 	}
-	ft_strcpy(exec_path, directory); 
-	ft_strcat(exec_path, "/");      
-	ft_strcat(exec_path, prompt);
+	strcpy(exec_path, directory);
+	strcat(exec_path, "/");
+	strcat(exec_path, prompt);
 	free(directory);
 	return (exec_path);
+}
+
+void	print_cmds(char **cmds)
+{
+	int i;
+	i = 0;
+	while(cmds[i])
+	{
+		printf("commande %d = [%s]\n",i + 1, cmds[i]);
+		i++;
+	}
 }
 int	my_exec(int i, char **cmds, char **argv, char **envp)
 {
 	char	*directory;
 	char	*cmd_path;
-	
+
 	directory = check_all_dirs(cmds[i]);
-	//printf("%s\n", cmds[i]);
 	if (!directory)
 		return (1);
 	cmd_path = ft_concat_path(directory, cmds[i]);
-	if(!cmd_path)
+	printf("path to exec : %s\n", cmd_path);
+	if (!cmd_path)
+		return (free(directory), 1);
+	print_cmds(cmds);
+	if(execve(cmd_path, argv, envp) == -1)
+	{
+		perror("execve failed");
+		free(cmd_path);
 		return (1);
-	free(directory);
-	execve(cmd_path, argv, envp);
-	free (cmd_path);
+	}
+	free(cmd_path);
 	return (0);
 }
 
-// ###### CUSTOM_EXEC ######
 
-// ###### PIPES_HANDLING ######
 
-void create_pipes(int fds[][2], int cmd_count) 
-{
-    int i = 0;
-    while (i < cmd_count - 1) 
-    {
-        if (pipe(fds[i]) == -1) 
-        {
-            perror("pipe failed");
-            exit(EXIT_FAILURE);
-        }
-        i++;
-    }
-}
-
-void close_fds(int fds[][2], int cmd_count)
-{
-    int i = 0;
-    while (i < cmd_count - 1) 
-    {
-        close(fds[i][0]);
-        close(fds[i][1]);
-        i++;
-    }
-}
-
-void child(int i, char **cmds, int fds[][2], char **argv, char **envp)
-{
-	printf("Child executing \n");
-	if (*fds[i] >= 0)
-	{
-		dup2(*fds[i], STDOUT_FILENO /*1*/   ); // mettre les informations dans le fd[1]
-		close(fds[i][0]);
-	}
-	if (i > 0)
-        close(fds[i - 1][1]);
-	// my_exec(args[0], args, envp);
-	my_exec(i, cmds, argv, envp);
-	exit(2);
-}
 char	**distribute_cmds(int argc, char **argv)
 {
 	char	**cmds;
@@ -191,57 +159,65 @@ char	**distribute_cmds(int argc, char **argv)
 	cmds = malloc((argc - 1) * sizeof(char *));
 	if (!cmds)
 		return (NULL);
-	while(i < argc)
+	while(i < argc && argv[i] != NULL)
 	{
 		cmds[j] = malloc((ft_strlen(argv[i]) + 1) * sizeof(char));
-		printf("size of cmd = %zu\n", ft_strlen(argv[i]));
 		if(!cmds[j])
 			return (NULL);
-		cmds[j] = argv[i];
+		cmds[j] = strdup(argv[i]);
 		j++;
 		i++;
 	}
-	cmds[i] = NULL;
+	cmds[j] = NULL;
 	return (cmds);
 }
 
+//FOR TEST
 int	main(int argc, char **argv, char **envp)
 {
 	int		cmd_count;
 	cmd_count = argc - 1;
-	printf("%d\n", cmd_count);
-	int		fds[cmd_count - 1][2];
+	int		fds[2];
 	pid_t	pids[cmd_count];
 	int		i;
 	char	**cmds;
 	
 	cmds = distribute_cmds(argc, argv);
-	printf("CMD1 : %s\n", cmds[0]);
-	printf("CMD2 : %s\n", cmds[1]);
-	printf("CMD3 : %s\n", cmds[2]);
-	printf("CMD4 : %s\n", cmds[3]);
-	printf("CMD5 : %s\n", cmds[4]);
+	//test :
+	print_cmds(cmds);
+	
 	i = 0;
-    while (i < cmd_count) 
-    {
-        pids[i] = fork();
-        if (pids[i] == -1) 
-        {
-            perror("fork failed");
-            exit(EXIT_FAILURE);
-        } 
-        else if (pids[i] == 0) 
-        {
-        	child(i, cmds, fds, argv, envp);
-        	exit(0); 
-        }
-        i++;
-    }
-    i = 0;
-    while (i < cmd_count) 
-    {
-        waitpid(pids[i], NULL, 0);
-        i++;
-    }
-    close_fds(fds, cmd_count);
+	pipe(fds);
+	while (i < cmd_count) 
+	{
+		// pipe following fork
+		pids[i] = fork();
+		printf("%d\n", pids[i]);
+		if (pids[i] == -1) 
+		{
+			perror("fork failed");
+			exit(EXIT_FAILURE);
+		} 
+		else if (pids[i] == 0) 
+		{
+			close(fds[0]);
+			dup2(fds[1], STDOUT_FILENO);
+			my_exec(i, cmds, argv, envp);
+			exit(0); 
+		}
+		else if (pids[i] > 0)
+		{
+			close(fds[1]);
+			dup2(fds[0], STDIN_FILENO);
+			my_exec(i, cmds, argv, envp);
+		}
+		i++;
+	}
+	i = 0;
+	while (i < cmd_count) 
+	{
+		waitpid(pids[i], NULL, 0);
+		i++;
+	}
+	free_array(cmds);
 }
