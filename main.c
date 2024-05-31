@@ -6,7 +6,7 @@
 /*   By: jedusser <jedusser@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/30 08:09:43 by jedusser          #+#    #+#             */
-/*   Updated: 2024/05/31 15:58:57 by jedusser         ###   ########.fr       */
+/*   Updated: 2024/05/31 16:43:44 by jedusser         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -107,18 +107,6 @@ char	*ft_concat_path(char *directory, char *prompt)
 	ft_strcat(exec_path, prompt);
 	free(directory);
 	return (exec_path);
-}
-
-void	print_cmds(char **cmds)
-{
-	int	i;
-
-	i = 0;
-	while (cmds[i])
-	{
-		printf("--> Command %d = [%s]\n", i + 1, cmds[i]);
-		i++;
-	}
 }
 
 int	my_exec(char *cmd, char **envp)
@@ -241,7 +229,7 @@ int	main(int argc, char **argv, char **envp)
 	cmds = distribute_cmds(argc, argv);
 	if (!cmds)
 		return (2);
-	if(pipex(cmd_count, cmds, envp) == -1)
+	if (pipex(cmd_count, cmds, envp) == -1)
 		return (3);
 	free_array(cmds);
 	return (0);

@@ -1,0 +1,10 @@
+exec.c
+file1.txt
+file2.txt
+file.txt
+libft
+ls
+main.c
+Makefile
+pipe_diagram.drawio.png
+pipex
