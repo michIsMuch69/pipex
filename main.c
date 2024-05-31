@@ -6,7 +6,7 @@
 /*   By: jedusser <jedusser@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/30 08:09:43 by jedusser          #+#    #+#             */
-/*   Updated: 2024/05/31 15:27:04 by jedusser         ###   ########.fr       */
+/*   Updated: 2024/05/31 15:58:00 by jedusser         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -129,18 +129,16 @@ int	my_exec(char *cmd, char **envp)
 
 	args = ft_split(cmd, ' ');
 	if (!args)
-		return (1);
+		return (-1);
 	directory = check_all_dirs(args[0]);
 	if (!directory)
-		return (free_array(args), 1);
+		return (free_array(args), -1);
 	cmd_path = ft_concat_path(directory, args[0]);
 	if (!cmd_path)
-		return (free(directory), free_array(args), 1);
+		return (free(directory), free_array(args), -1);
 	if (execve(cmd_path, args, envp) == -1)
-		perror("execve failed");
-	free(cmd_path);
-	free_array(args);
-	return (1);
+		return (perror("execve failed"), free_array(args), free(cmd_path), -1);
+	return (0);
 }
 
 char	**distribute_cmds(int argc, char **argv)
@@ -166,7 +164,7 @@ char	**distribute_cmds(int argc, char **argv)
 	return (cmds);
 }
 
-void	handle_child(int i, int fds[2], int cmd_count, int prev_fd)
+void	handle_child(int i, int fds[2], int cmd_count, int prev_fd, char **cmds, char **envp)
 {
 	if (i > 0) //not first cmd.
 	{
@@ -178,6 +176,8 @@ void	handle_child(int i, int fds[2], int cmd_count, int prev_fd)
 		dup2(fds[1], STDOUT_FILENO);
 		close(fds[1]);
 	}
+	if (my_exec(cmds[i], envp) == -1)
+		free_array(cmds);
 	close(fds[0]);
 }
 
@@ -213,16 +213,12 @@ int	pipex(int cmd_count, char **cmds, char **envp)
 	while (i < cmd_count)
 	{
 		if (pipe(fds) == -1)
-			return (perror("pipe failed"), free_array(cmds), 1);
+			return (perror("pipe failed"), free_array(cmds), -1);
 		pid = fork();
 		if (pid == -1)
-			return (perror("fork failed"), free_array(cmds), 1);
+			return (perror("fork failed"), free_array(cmds), -1);
 		else if (pid == 0)
-		{
-			handle_child(i, fds, cmd_count, prev_fd);
-			my_exec(cmds[i], envp);
-			exit(EXIT_FAILURE);
-		}
+			handle_child(i, fds, cmd_count, prev_fd, cmds, envp);
 		else
 		{
 			handle_parent(i, fds, prev_fd, cmd_count);
@@ -230,6 +226,7 @@ int	pipex(int cmd_count, char **cmds, char **envp)
 		}
 		i++;
 	}
+	wait_all(cmd_count);
 	return (0);
 }
 
@@ -243,9 +240,9 @@ int	main(int argc, char **argv, char **envp)
 		return (ft_printf("Usage: ./pipex cmd1 cmd2 ... cmdN\n"), 1);
 	cmds = distribute_cmds(argc, argv);
 	if (!cmds)
-		return (1);
-	pipex(cmd_count, cmds, envp);
-	wait_all(cmd_count);
+		return (2);
+	if(pipex(cmd_count, cmds, envp) == -1)
+		return (3);
 	free_array(cmds);
 	return (0);
 }
