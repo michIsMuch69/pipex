@@ -6,7 +6,7 @@
 /*   By: jedusser <jedusser@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/30 08:09:43 by jedusser          #+#    #+#             */
-/*   Updated: 2024/05/31 15:58:00 by jedusser         ###   ########.fr       */
+/*   Updated: 2024/05/31 15:58:57 by jedusser         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -218,10 +218,10 @@ int	pipex(int cmd_count, char **cmds, char **envp)
 		if (pid == -1)
 			return (perror("fork failed"), free_array(cmds), -1);
 		else if (pid == 0)
-			handle_child(i, fds, cmd_count, prev_fd, cmds, envp);
+			handle_child(i, fds, cmd_count, prev_fd, cmds, envp); // retour d'erreur ?
 		else
 		{
-			handle_parent(i, fds, prev_fd, cmd_count);
+			handle_parent(i, fds, prev_fd, cmd_count); //retour d'erreur ?
 			prev_fd = fds[0];
 		}
 		i++;
