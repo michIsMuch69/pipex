@@ -6,7 +6,7 @@
 /*   By: jedusser <jedusser@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/30 08:09:43 by jedusser          #+#    #+#             */
-/*   Updated: 2024/05/31 14:29:28 by jedusser         ###   ########.fr       */
+/*   Updated: 2024/05/31 15:19:26 by jedusser         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -166,35 +166,50 @@ char	**distribute_cmds(int argc, char **argv)
 	return (cmds);
 }
 //for test 
-
-int	main(int argc, char **argv, char **envp)
+void handle_child(int i, int fds[2], pid_t pid, int cmd_count, int prev_fd)
 {
-	int		cmd_count;
+	if (i > 0) //not first cmd.
+	{
+		dup2(prev_fd, STDIN_FILENO);
+		close(prev_fd);
+	}
+	if (i < cmd_count - 1) // not last cmd.
+	{
+		dup2(fds[1], STDOUT_FILENO);
+		close(fds[1]);
+	}
+	close(fds[0]);
+
+}
+
+void handle_parent(int i, int fds[2], int prev_fd, int cmd_count)
+{
+	if (i > 0)
+		close(prev_fd);
+	if (i < cmd_count - 1)
+		close(fds[1]);
+}
+
+void wait_all(int cmd_count)
+{
+	int	i;
+
+	i = 0;
+	while (i < cmd_count)
+	{
+		waitpid(-1, NULL, 0);
+		i++;
+	}
+}
+int	pipex(int cmd_count, char **cmds, char **envp)
+{
+	int		i;
+	int		prev_fd;
 	int		fds[2];
 	pid_t	pid;
-	int		i;
-	char	**cmds;
-	int		prev_fd;
-
-	if (argc < 2)
-	{
-		printf("Usage: ./pipex cmd1 cmd2 ... cmdN\n");
-		return (1);
-	}
-	cmds = distribute_cmds(argc, argv);
-	if (!cmds)
-		return (1);
-
-		
-	//test
-	print_cmds(cmds);
-	//test
 	
-	cmd_count = argc - 1;
-	printf("nb of commands : %d\n", cmd_count);
-	i = 0;
 	prev_fd = 0;
-
+	i = 0;
 	while (i < cmd_count)
 	{
 		if (pipe(fds) == -1)
@@ -203,40 +218,34 @@ int	main(int argc, char **argv, char **envp)
 		if (pid == -1)
 			return (perror("fork failed"), free_array(cmds), 1);
 		else if (pid == 0)
-		{
-			printf("-----Child Executing-----\n");
-			if (i > 0) //not first cmd.
-			{
-				dup2(prev_fd, STDIN_FILENO);
-				close(prev_fd);
-			}
-			if (i < cmd_count - 1) // not last cmd.
-			{
-				dup2(fds[1], STDOUT_FILENO);
-				close(fds[1]);
-			}
-			close(fds[0]);
+		{	
+			handle_child(i, fds, pid, cmd_count, prev_fd);
 			my_exec(cmds[i], envp);
 			exit(EXIT_FAILURE);
 		}
 		else
 		{
-			printf("-----Parent Executing-----\n");
-			if (i > 0)
-				close(prev_fd);
-			if (i < cmd_count - 1)
-				close(fds[1]);
+			handle_parent(i, fds, prev_fd, cmd_count);
 			prev_fd = fds[0];
 		}
 		i++;
 	}
-	i = 0;
-	while (i < cmd_count)
-	{
-		printf("wait for process %d correspoding to command nb : %d\n", pid, i + 1);
-		waitpid(-1, NULL, 0);
-		i++;
-	}
+	return (0);
+}
+
+int	main(int argc, char **argv, char **envp)
+{
+	int		cmd_count;
+	char	**cmds;
+
+	cmd_count = argc - 1;
+	if (argc < 2)
+		return (ft_printf("Usage: ./pipex cmd1 cmd2 ... cmdN\n"), 1);
+	cmds = distribute_cmds(argc, argv);
+	if (!cmds)
+		return (1);	
+	pipex(cmd_count, cmds, envp);
+	wait_all(cmd_count);
 	free_array(cmds);
 	return (0);
 }
