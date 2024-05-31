@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   main.c                                             :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: jean-micheldusserre <jean-micheldusserr    +#+  +:+       +#+        */
+/*   By: jedusser <jedusser@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/30 08:09:43 by jedusser          #+#    #+#             */
-/*   Updated: 2024/05/30 17:04:59 by jean-michel      ###   ########.fr       */
+/*   Updated: 2024/05/31 14:29:28 by jedusser         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -95,27 +95,28 @@ char	*ft_concat_path(char *directory, char *prompt)
 	size_t	total_length;
 	char	*exec_path;
 
-	total_length = strlen(directory) + strlen(prompt) + 2;
+	total_length = ft_strlen(directory) + ft_strlen(prompt) + 2;
 	exec_path = malloc(total_length);
 	if (!exec_path)
 	{
 		free(directory);
 		return (NULL);
 	}
-	strcpy(exec_path, directory);
-	strcat(exec_path, "/");
-	strcat(exec_path, prompt);
+	ft_strcpy(exec_path, directory);
+	ft_strcat(exec_path, "/");
+	ft_strcat(exec_path, prompt);
 	free(directory);
 	return (exec_path);
 }
 
 void	print_cmds(char **cmds)
 {
-	int i;
+	int	i;
+	
 	i = 0;
 	while (cmds[i])
 	{
-		printf("commande %d = [%s]\n", i + 1, cmds[i]);
+		printf("--> Command %d = [%s]\n", i + 1, cmds[i]);
 		i++;
 	}
 }
@@ -135,8 +136,8 @@ int	my_exec(char *cmd, char **envp)
 	cmd_path = ft_concat_path(directory, args[0]);
 	if (!cmd_path)
 		return (free(directory), free_array(args), 1);
-	execve(cmd_path, args, envp);
-	perror("execve failed");
+	if (execve(cmd_path, args, envp) == - 1)
+		perror("execve failed");
 	free(cmd_path);
 	free_array(args);
 	return (1);
@@ -150,12 +151,12 @@ char	**distribute_cmds(int argc, char **argv)
 
 	j = 0;
 	i = 1;
-	cmds = malloc((argc - 1) * sizeof(char *));
+	cmds = malloc((argc) * sizeof(char *));
 	if (!cmds)
 		return (NULL);
 	while (i < argc && argv[i] != NULL)
 	{
-		cmds[j] = strdup(argv[i]);
+		cmds[j] = ft_strdup(argv[i]);
 		if (!cmds[j])
 			return (free_array(cmds), NULL);
 		j++;
@@ -164,6 +165,7 @@ char	**distribute_cmds(int argc, char **argv)
 	cmds[j] = NULL;
 	return (cmds);
 }
+//for test 
 
 int	main(int argc, char **argv, char **envp)
 {
@@ -176,38 +178,39 @@ int	main(int argc, char **argv, char **envp)
 
 	if (argc < 2)
 	{
-		fprintf(stderr, "Usage: %s cmd1 cmd2 ... cmdN\n", argv[0]);
+		printf("Usage: ./pipex cmd1 cmd2 ... cmdN\n");
 		return (1);
 	}
 	cmds = distribute_cmds(argc, argv);
 	if (!cmds)
 		return (1);
 
+		
+	//test
+	print_cmds(cmds);
+	//test
+	
 	cmd_count = argc - 1;
+	printf("nb of commands : %d\n", cmd_count);
 	i = 0;
 	prev_fd = 0;
 
 	while (i < cmd_count)
 	{
 		if (pipe(fds) == -1)
-		{
-			perror("pipe failed");
-			return (free_array(cmds), 1);
-		}
+			return (perror("pipe failed"), free_array(cmds), 1);
 		pid = fork();
 		if (pid == -1)
-		{
-			perror("fork failed");
-			return (free_array(cmds), 1);
-		}
+			return (perror("fork failed"), free_array(cmds), 1);
 		else if (pid == 0)
 		{
-			if (i > 0)
+			printf("-----Child Executing-----\n");
+			if (i > 0) //not first cmd.
 			{
 				dup2(prev_fd, STDIN_FILENO);
 				close(prev_fd);
 			}
-			if (i < cmd_count - 1)
+			if (i < cmd_count - 1) // not last cmd.
 			{
 				dup2(fds[1], STDOUT_FILENO);
 				close(fds[1]);
@@ -218,6 +221,7 @@ int	main(int argc, char **argv, char **envp)
 		}
 		else
 		{
+			printf("-----Parent Executing-----\n");
 			if (i > 0)
 				close(prev_fd);
 			if (i < cmd_count - 1)
@@ -229,6 +233,7 @@ int	main(int argc, char **argv, char **envp)
 	i = 0;
 	while (i < cmd_count)
 	{
+		printf("wait for process %d correspoding to command nb : %d\n", pid, i + 1);
 		waitpid(-1, NULL, 0);
 		i++;
 	}
