@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   main.c                                             :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: jedusser <jedusser@student.42.fr>          +#+  +:+       +#+        */
+/*   By: jean-micheldusserre <jean-micheldusserr    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/30 08:09:43 by jedusser          #+#    #+#             */
-/*   Updated: 2024/05/31 16:43:44 by jedusser         ###   ########.fr       */
+/*   Updated: 2024/06/02 18:55:21 by jean-michel      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -154,6 +154,10 @@ char	**distribute_cmds(int argc, char **argv)
 
 void	handle_child(int i, int fds[2], int cmd_count, int prev_fd, char **cmds, char **envp)
 {
+	// if i = 0;
+	// input_fd = open(input_file, O_RDONLY);
+	// dup2 (input_fd, STDIN_FILENO)
+	
 	if (i > 0) //not first cmd.
 	{
 		dup2(prev_fd, STDIN_FILENO);
@@ -164,6 +168,11 @@ void	handle_child(int i, int fds[2], int cmd_count, int prev_fd, char **cmds, ch
 		dup2(fds[1], STDOUT_FILENO);
 		close(fds[1]);
 	}
+
+	// if i < cmd_count - 1 
+	// 	// if output_fd, STdout_FILENO
+	//	output_fd = open(output_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+
 	if (my_exec(cmds[i], envp) == -1)
 		free_array(cmds);
 	close(fds[0]);
@@ -222,7 +231,9 @@ int	main(int argc, char **argv, char **envp)
 {
 	int		cmd_count;
 	char	**cmds;
-
+	//
+	//
+	
 	cmd_count = argc - 1;
 	if (argc < 2)
 		return (ft_printf("Usage: ./pipex cmd1 cmd2 ... cmdN\n"), 1);

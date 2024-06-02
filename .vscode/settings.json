@@ -57,6 +57,7 @@
   "C_Cpp_Runner.useLinkTimeOptimization": false,
   "C_Cpp_Runner.msvcSecureNoWarnings": false,
   "files.associations": {
-    "environments.h": "c"
+    "environments.h": "c",
+    "string.h": "c"
   }
 }
