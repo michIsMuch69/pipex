@@ -6,7 +6,7 @@
 #    By: jedusser <jedusser@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/05/27 12:03:52 by jedusser          #+#    #+#              #
-#    Updated: 2024/05/30 08:53:49 by jedusser         ###   ########.fr        #
+#    Updated: 2024/06/03 10:09:29 by jedusser         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -17,7 +17,9 @@ SRCS_DIR = .
 
 OBJS_PATH = .obj
 
-SRCS = exec.c main.c
+SRCS = exec.c main.c utils.c
+
+HDR = pipex.h
 
 LIBFT_PATH = libft/
 LIBFT_HDR_PATH = libft/hdr/
@@ -33,13 +35,13 @@ default : all
 
 all : $(LIBFT) $(NAME)
 
-$(NAME) : $(OBJS) $(LIBFT) 
+$(NAME) : $(OBJS) $(LIBFT)
 	$(CC) $(FLAGS) $^ -o $@ $(LDFLAGS)
 	
 $(LIBFT) :
 	$(MAKE) -C $(LIBFT_PATH) all 	
 
-$(OBJS_PATH)/%.o : $(SRCS_DIR)/%.c 
+$(OBJS_PATH)/%.o : $(SRCS_DIR)/%.c $(HDR)
 	mkdir -p $(OBJS_PATH)
 	$(CC) $(FLAGS) -c $< -o $@
 

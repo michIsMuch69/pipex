@@ -6,129 +6,12 @@
 /*   By: jedusser <jedusser@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/30 08:09:43 by jedusser          #+#    #+#             */
-/*   Updated: 2024/06/03 09:41:04 by jedusser         ###   ########.fr       */
+/*   Updated: 2024/06/03 10:17:43 by jedusser         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "libft.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <dirent.h>
-#include <fcntl.h>
-
+#include "pipex.h"
 // Custom exec functions
-int	ft_strcmp(char *s1, char *s2)
-{
-	int	i;
-
-	i = 0;
-	while (s1[i] && s2[i] && s1[i] == s2[i])
-		i++;
-	return (s1[i] - s2[i]);
-}
-
-void	free_array(char **array)
-{
-	int	i;
-
-	i = 0;
-	while (array[i])
-		free(array[i++]);
-	free(array);
-}
-
-int	exec_found(const char *dirname, char *exec_searched)
-{
-	DIR				*dir;
-	struct dirent	*entity;
-
-	dir = opendir(dirname);
-	if (!dir)
-		return (-1);
-	entity = readdir(dir);
-	while (entity != NULL)
-	{
-		if (ft_strcmp(entity->d_name, exec_searched) == 0)
-		{
-			closedir(dir);
-			return (1);
-		}
-		entity = readdir(dir);
-	}
-	closedir(dir);
-	return (0);
-}
-
-char	*check_all_dirs(char *exec_searched)
-{
-	const char	*paths;
-	char		**path_list;
-	char		*result;
-	int			i;
-
-	paths = getenv("PATH");
-	if (!paths)
-		return (NULL);
-	path_list = ft_split(paths, ':');
-	result = NULL;
-	if (!path_list)
-		return (NULL);
-	i = 0;
-	while (path_list[i])
-	{
-		if (exec_found(path_list[i], exec_searched) == 1)
-		{
-			result = ft_strdup(path_list[i]);
-			break ;
-		}
-		i++;
-	}
-	free_array(path_list);
-	return (result);
-}
-
-char	*ft_concat_path(char *directory, char *prompt)
-{
-	size_t	total_length;
-	char	*exec_path;
-
-	total_length = ft_strlen(directory) + ft_strlen(prompt) + 2;
-	exec_path = malloc(total_length);
-	if (!exec_path)
-	{
-		free(directory);
-		return (NULL);
-	}
-	ft_strcpy(exec_path, directory);
-	ft_strcat(exec_path, "/");
-	ft_strcat(exec_path, prompt);
-	free(directory);
-	return (exec_path);
-}
-
-int	my_exec(char *cmd, char **envp)
-{
-	char	**args;
-	char	*directory;
-	char	*cmd_path;
-
-	args = ft_split(cmd, ' ');
-	if (!args)
-		return (-1);
-	directory = check_all_dirs(args[0]);
-	if (!directory)
-		return (free_array(args), -1);
-	cmd_path = ft_concat_path(directory, args[0]);
-	if (!cmd_path)
-		return (free(directory), free_array(args), -1);
-	if (execve(cmd_path, args, envp) == -1)
-		return (perror("execve failed"), free_array(args), free(cmd_path), -1);
-	return (0);
-}
 
 char	**distribute_cmds(int argc, char **argv)
 {
@@ -160,20 +43,20 @@ void	handle_child(int i, int fds[2], int cmd_count, int prev_fd, char **cmds, ch
 	// dup2 (input_fd, STDIN_FILENO)
 	if (i == 0)
 	{
-		int input_fd = open("file1.txt", O_RDONLY);
+		int	input_fd = open("file1.txt", O_RDONLY);
 		dup2(input_fd, STDIN_FILENO);
 	}
 	else // (i > 0) //not first cmd.
 	{
 		dup2(prev_fd, STDIN_FILENO);
 		close(prev_fd);
-		}
+	}
 	if (i < cmd_count - 1) // not last cmd.
 	{
 		dup2(fds[1], STDOUT_FILENO);
 		close(fds[1]);
 	}
-	else 
+	else
 	{
 		int	output_fd = open("file2.txt", O_WRONLY | O_CREAT | O_APPEND, 0644);
 		dup2(output_fd, STDOUT_FILENO);
@@ -238,7 +121,7 @@ int	main(int argc, char **argv, char **envp)
 	char	**cmds;
 	//
 	//
-	
+
 	cmd_count = argc - 1;
 	if (argc < 2)
 		return (ft_printf("Usage: ./pipex cmd1 cmd2 ... cmdN\n"), 1);
@@ -250,3 +133,6 @@ int	main(int argc, char **argv, char **envp)
 	free_array(cmds);
 	return (0);
 }
+
+// tests : 
+// ./pipex  rev sort "cat -e" "tr 'o' 'x'" 
