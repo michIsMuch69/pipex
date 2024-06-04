@@ -6,7 +6,7 @@
 /*   By: jedusser <jedusser@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/30 08:09:43 by jedusser          #+#    #+#             */
-/*   Updated: 2024/06/03 10:17:43 by jedusser         ###   ########.fr       */
+/*   Updated: 2024/06/03 12:16:12 by jedusser         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -38,9 +38,6 @@ char	**distribute_cmds(int argc, char **argv)
 
 void	handle_child(int i, int fds[2], int cmd_count, int prev_fd, char **cmds, char **envp)
 {
-	// if i = 0;
-	// input_fd = open(input_file, O_RDONLY);
-	// dup2 (input_fd, STDIN_FILENO)
 	if (i == 0)
 	{
 		int	input_fd = open("file1.txt", O_RDONLY);
@@ -48,7 +45,7 @@ void	handle_child(int i, int fds[2], int cmd_count, int prev_fd, char **cmds, ch
 	}
 	else // (i > 0) //not first cmd.
 	{
-		dup2(prev_fd, STDIN_FILENO);
+		dup2(prev_fd, STDIN_FILENO); // --> proteger appel a pid, apres refacto);
 		close(prev_fd);
 	}
 	if (i < cmd_count - 1) // not last cmd.
@@ -58,7 +55,7 @@ void	handle_child(int i, int fds[2], int cmd_count, int prev_fd, char **cmds, ch
 	}
 	else
 	{
-		int	output_fd = open("file2.txt", O_WRONLY | O_CREAT | O_APPEND, 0644);
+		int	output_fd = open("file2.txt", O_WRONLY | O_CREAT | O_TRUNC, 0644);
 		dup2(output_fd, STDOUT_FILENO);
 	}
 	if (my_exec(cmds[i], envp) == -1)
